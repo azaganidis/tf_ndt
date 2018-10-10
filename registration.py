@@ -121,4 +121,5 @@ class RegistrationNDT():
         #X=tf.matmul(tf.matrix_inverse(Hessian), Gradient)
 
         Diff_update = tf.squeeze(X)
-        self.train_op=tf.assign_add(self.PARAMS, 0.9*Diff_update)
+        self.train_op=tf.assign_add(self.PARAMS, 0.1*Diff_update)
+        #self.train_op=tf.Print(self.train_op, [Diff_update])

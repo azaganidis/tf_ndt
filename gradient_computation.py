@@ -183,10 +183,12 @@ def gradients(x,B,C, likelihood,lfd2, angle):
     #xtBZBZBx=tf.squeeze(tf.matmul(xtBZBZB,x_Tiled),(3,4))
     #END WRONG
 
-    Z_=tf.tile(tf.expand_dims(Z, 1),(1,6,1,1,1))
+    Z_1=tf.tile(tf.expand_dims(Z, 2),(1,1,6,1,1))
+    Z_2=tf.tile(tf.expand_dims(Z, 1),(1,6,1,1,1))
     B_=tf.tile(tf.expand_dims(tf.expand_dims(B, 1),1),(1,6,6,1,1))
-    BZ_=tf.matmul(B_,Z_)
-    BZBZ_=tf.matmul(BZ_,BZ_)
+    BZ_1=tf.matmul(B_,Z_1)
+    BZ_2=tf.matmul(B_,Z_2)
+    BZBZ_=tf.matmul(BZ_1,BZ_1)
     BZBZB_=tf.matmul(BZBZ_,B_)
     xtBZBZBx=tf.matmul(tf.matmul(x_Tiled, BZBZB_,transpose_a=True), x_Tiled)
     xtBZBZBx=tf.squeeze(xtBZBZBx,(3,4))
@@ -197,14 +199,15 @@ def gradients(x,B,C, likelihood,lfd2, angle):
     return Q,Hessian
 
 def regularize_Hessian(H,G):
-    e,v=tf.self_adjoint_eig(H)
-    minCoeff=tf.reduce_min(e)
-    maxCoeff=tf.reduce_max(e)
-    regularizer=tf.norm(G)
-    regularizer=tf.cond(regularizer+minCoeff>0, lambda: regularizer,lambda: 0.001*maxCoeff-minCoeff )
-    e=e+regularizer
-    Lam=tf.diag(e)
-    H=tf.matmul(tf.matmul(v,Lam), v, transpose_b=True)
-    return H
+    with tf.device('/device:GPU:0'):
+        e,v=tf.self_adjoint_eig(H)
+        minCoeff=tf.reduce_min(e)
+        maxCoeff=tf.reduce_max(e)
+        regularizer=tf.norm(G)
+        regularizer=tf.cond(regularizer+minCoeff>0, lambda: regularizer,lambda: 0.001*maxCoeff-minCoeff )
+        e=e+regularizer
+        Lam=tf.diag(e)
+        H=tf.matmul(tf.matmul(v,Lam), v, transpose_b=True)
+        return H
 
 

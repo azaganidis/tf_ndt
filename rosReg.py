@@ -80,7 +80,7 @@ class RosSemantics():
             start_time=time.time()
             self.sess.run(self.registration.reset_transform)
             #T, _, transform, loss=self.sess.run([self.registration.Transform, self.registration.train_op, self.registration.PARAMS, self.registration.loss], feed, options=self.options, run_metadata=self.run_metadata)
-            for step in range(5):
+            for step in range(50):
                 #_, transform, loss=self.sess.run([self.registration.train_op, self.registration.PARAMS, self.registration.loss], feed, options=self.options, run_metadata=self.run_metadata)
                 #loss=self.sess.run([self.registration.loss], feed, options=self.options, run_metadata=self.run_metadata)
                 #T, _, transform, loss=self.sess.run([self.registration.Transform, self.registration.train_op, self.registration.PARAMS, self.registration.loss], feed, options=self.options)
