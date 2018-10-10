@@ -87,11 +87,12 @@ class RegistrationNDT():
         a=tf.constant(0.0)
         def split_semantic(incloud, val):
             ValueEqual = tf.equal(incloud[:,3], val)
-            NumPoints=tf.count_nonzero(ValueEqual)
-            with tf.control_dependencies([NumPoints]):
-                incloud=tf.cond(tf.greater(NumPoints,0), lambda:incloud, lambda: tf.constant([[0.0,0.0,0.0,.0]]))
-                ValueEqual=tf.cond(tf.greater(NumPoints,0), lambda:ValueEqual, lambda: tf.constant([True]))
-                return tf.boolean_mask(incloud, ValueEqual) 
+            with tf.device('/device:GPU:0'):
+                NumPoints=tf.reduce_sum(tf.cast(ValueEqual, tf.float32))
+                with tf.control_dependencies([NumPoints]):
+                    incloud=tf.cond(tf.greater(NumPoints,0), lambda:incloud, lambda: tf.constant([[0.0,0.0,0.0,.0]]))
+                    ValueEqual=tf.cond(tf.greater(NumPoints,0), lambda:ValueEqual, lambda: tf.constant([True]))
+                    return tf.boolean_mask(incloud, ValueEqual) 
         def AddL(a,L,G,H):
             L_,G_,H_= self.add_pair_(NDT(split_semantic(static, a),res), NDT(split_semantic(moving,a),res),n_neighbors) 
             return tf.add(a,1),tf.add(L,L_), tf.subtract(G,G_), tf.subtract(H,H_)

@@ -74,6 +74,8 @@ class RosSemantics():
         a=np.array(list(data_out))
         a=a[:,:4]
         #a[:,3]=a[:,3]/255
+        train_writer = tf.summary.FileWriter('/home/anestis/workspace/ndt_gpu/timing', self.sess.graph)
+
         if self.count :
             start = time.time()
             feed = {self.inCloud:a, self.static:self.previusCloud}
@@ -85,15 +87,16 @@ class RosSemantics():
                 #loss=self.sess.run([self.registration.loss], feed, options=self.options, run_metadata=self.run_metadata)
                 #T, _, transform, loss=self.sess.run([self.registration.Transform, self.registration.train_op, self.registration.PARAMS, self.registration.loss], feed, options=self.options)
                 #g,G,h,H,T, _, transform, loss=self.sess.run([self.registration.gradient, self.registration.G, self.registration.hessian, self.registration.H,self.registration.Transform, self.registration.train_op, self.registration.PARAMS, self.registration.loss], feed)
-                T, _, transform, loss=self.sess.run([self.registration.Transform, self.registration.train_op, self.registration.PARAMS, self.registration.loss], feed)
+                T, _, transform, loss=self.sess.run([self.registration.Transform, self.registration.train_op, self.registration.PARAMS, self.registration.loss], feed,options=self.options, run_metadata=self.run_metadata)
                 print loss, transform[3:]
                 #np.set_printoptions(precision=1, suppress=True)
                 #print h
                 #print H
-            #fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
-            #chrome_trace = fetched_timeline.generate_chrome_trace_format()
-            #with open('timeline_01.json', 'w') as f:
-            #    f.write(chrome_trace)
+                train_writer.add_run_metadata(self.run_metadata, 'iter%d' %step)
+            fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
+            chrome_trace = fetched_timeline.generate_chrome_trace_format()
+            with open('timeline_01.json', 'w') as f:
+                f.write(chrome_trace)
             end_time=time.time()
             print "TIME", end_time-start_time
         self.previusCloud=a
