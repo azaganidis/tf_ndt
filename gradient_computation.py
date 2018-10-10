@@ -197,15 +197,14 @@ def gradients(x,B,C, likelihood,lfd2, angle):
     return Q,Hessian
 
 def regularize_Hessian(H,G):
-    with tf.device('/device:GPU:0'):
-        e,v=tf.self_adjoint_eig(H)
-        minCoeff=tf.reduce_min(e)
-        maxCoeff=tf.reduce_max(e)
-        regularizer=tf.norm(G)
-        regularizer=tf.cond(regularizer+minCoeff>0, lambda: regularizer,lambda: 0.001*maxCoeff-minCoeff )
-        e=e+regularizer
-        Lam=tf.diag(e)
-        H=tf.matmul(tf.matmul(v,Lam), v, transpose_b=True)
-        return H
+    e,v=tf.self_adjoint_eig(H)
+    minCoeff=tf.reduce_min(e)
+    maxCoeff=tf.reduce_max(e)
+    regularizer=tf.norm(G)
+    regularizer=tf.cond(regularizer+minCoeff>0, lambda: regularizer,lambda: 0.001*maxCoeff-minCoeff )
+    e=e+regularizer
+    Lam=tf.diag(e)
+    H=tf.matmul(tf.matmul(v,Lam), v, transpose_b=True)
+    return H
 
 

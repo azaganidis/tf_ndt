@@ -1,5 +1,6 @@
 import tensorflow as tf
 from gradient_computation import *
+from ndt import *
 class RegistrationNDT():
     def n_nearest(self, Distances, CSum, n_neighbors):
         dist=tf.norm(Distances, axis=2)
@@ -53,6 +54,52 @@ class RegistrationNDT():
         NS=tf.greater_equal(tf.shape(static.Means)[0], n_neighbors)
         HasDistributions=tf.logical_and(NM,NS)
         self.loss, self.gradient, self.hessian=tf.cond(HasDistributions, lambda: self.add_pair_lamd(static,moving, n_neighbors), lambda: (self.loss, self.gradient, self.hessian))
+
+    def add_pair_lamd_(self,static, moving, n_neighbors):
+        lfd1=1
+        lfd2=0.05
+        RotationTiled= tf.tile(tf.expand_dims(self.Rotation,0), (moving.NCELLS, 1,1))
+        TransformedMeans=tf.matmul(RotationTiled, tf.expand_dims(moving.Means,-1))
+        TransformedMeans=tf.squeeze(TransformedMeans, -1)+self.Translation
+        TransformedCovars=tf.matmul(tf.matmul(RotationTiled,moving.Covariances, transpose_a=True),RotationTiled)
+        Distances=tf.expand_dims(TransformedMeans,1)-tf.expand_dims(static.Means,0)
+        CSum=tf.expand_dims(TransformedCovars,1)+tf.expand_dims(static.Covariances,0)
+        MCov = tf.reshape(tf.tile(tf.expand_dims(moving.Covariances,1),(1,2,1,1)), [-1,3,3])
+        Distances,CSum= self.n_nearest(Distances, CSum, n_neighbors)
+        #Instead of inverse, cholesky decomposition
+        #CInv = tf.matrix_inverse(CSum)
+        CInv=tf.cholesky_solve(CSum, tf.tile(tf.expand_dims(tf.eye(3),0),(tf.shape(CSum)[0],1,1)))
+        m_ij=tf.expand_dims(Distances,2)
+        l=tf.matmul(tf.matmul(m_ij, CInv, transpose_a=True), m_ij)
+        likelihood=tf.exp(-lfd2*l/2)
+        loss=-lfd1*tf.reduce_sum(likelihood)
+        G,H=gradients(m_ij,CInv, MCov, likelihood,lfd2,self.PARAMS[3:])
+        return loss,G,H
+
+    def add_pair_(self,static, moving, n_neighbors=2):
+        NM=tf.greater_equal(tf.shape(moving.Means)[0], n_neighbors)
+        NS=tf.greater_equal(tf.shape(static.Means)[0], n_neighbors)
+        HasDistributions=tf.logical_and(NM,NS)
+        L, G, H=tf.cond(HasDistributions, lambda: self.add_pair_lamd_(static,moving, n_neighbors), lambda: (self.loss, self.gradient, self.hessian))
+        return L,G,H
+
+    def add_semantic(self, static, moving, n_neighbors=2, n_classes=15, res=2):
+        a=tf.constant(0.0)
+        def split_semantic(incloud, val):
+            ValueEqual = tf.equal(incloud[:,3], val)
+            NumPoints=tf.count_nonzero(ValueEqual)
+            with tf.control_dependencies([NumPoints]):
+                incloud=tf.cond(tf.greater(NumPoints,0), lambda:incloud, lambda: tf.constant([[0.0,0.0,0.0,.0]]))
+                ValueEqual=tf.cond(tf.greater(NumPoints,0), lambda:ValueEqual, lambda: tf.constant([True]))
+                return tf.boolean_mask(incloud, ValueEqual) 
+        def AddL(a,L,G,H):
+            L_,G_,H_= self.add_pair_(NDT(split_semantic(static, a),res), NDT(split_semantic(moving,a),res),n_neighbors) 
+            return tf.add(a,1),tf.add(L,L_), tf.subtract(G,G_), tf.subtract(H,H_)
+        a,L,G,H=tf.while_loop(lambda a,L,G,H:a<n_classes,AddL,(a,self.loss,self.gradient,self.hessian) )
+        self.loss=L
+        self.gradient=G
+        self.hessian=H
+
 
         
     def __init__(self):

@@ -36,12 +36,15 @@ class RosSemantics():
             self.inCloud=tf.placeholder(tf.float32, shape=(None, 4))
             self.static=tf.placeholder(tf.float32, shape=(None,4))
             self.registration=RegistrationNDT()
+            '''
             for i in range(15):
                 filt=split_semantic(self.inCloud,i)
                 filt_static=split_semantic(self.static,i)
                 ndt1=NDT(filt, 1.0)
                 ndt2=NDT(filt_static, 1.0)
                 self.registration.add_pair(ndt1, ndt2)
+            '''
+            self.registration.add_semantic(self.static,self.inCloud)
             #ndt1=NDT(self.inCloud, 4.0)
             #ndt2=NDT(self.static, 4.0)
             #self.registration.add_pair(ndt1, ndt2)
