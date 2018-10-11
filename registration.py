@@ -112,9 +112,8 @@ class RegistrationNDT():
     def get_train_op(self):
         Gradient=self.gradient
         Hessian=self.hessian
-        #Hessian =tf.Print(Hessian ,[Hessian ],summarize=36)
-        self.G=-tf.transpose(tf.gradients(self.loss, self.PARAMS))
-        self.H=-tf.hessians(self.loss, self.PARAMS)[0]
+        #self.G=-tf.transpose(tf.gradients(self.loss, self.PARAMS))
+        #self.H=-tf.hessians(self.loss, self.PARAMS)[0]
         #Gradient=self.G
         #Hessian=self.H
         Hessian=regularize_Hessian(Hessian,Gradient)
