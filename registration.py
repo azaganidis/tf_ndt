@@ -95,7 +95,7 @@ class RegistrationNDT():
                     return tf.boolean_mask(incloud, ValueEqual) 
         def AddL(a,L,G,H):
             L_,G_,H_= self.add_pair_(NDT(split_semantic(static, a),res), NDT(split_semantic(moving,a),res),n_neighbors) 
-            return tf.add(a,1),tf.add(L,L_), tf.subtract(G,G_), tf.subtract(H,H_)
+            return tf.add(a,1),tf.add(L,L_), tf.add(G,G_), tf.add(H,H_)
         a,L,G,H=tf.while_loop(lambda a,L,G,H:a<n_classes,AddL,(a,self.loss,self.gradient,self.hessian) )
         self.loss=L
         self.gradient=G
@@ -120,6 +120,10 @@ class RegistrationNDT():
         X=tf.cholesky_solve(tf.cholesky(Hessian), Gradient)
         #X=tf.matmul(tf.matrix_inverse(Hessian), Gradient)
 
-        Diff_update = tf.squeeze(X)
-        self.train_op=tf.assign_add(self.PARAMS, 0.1*Diff_update)
+        Diff_update = -tf.squeeze(X)
+        MoreThuente(Diff_update, Gradient)
+        self.train_op=tf.assign_add(self.PARAMS, 1*Diff_update)
         #self.train_op=tf.Print(self.train_op, [Diff_update])
+def MoreThuente(increment, Gradient):
+    dginit=tf.tensordot(increment,Gradient,1)
+    print dginit
