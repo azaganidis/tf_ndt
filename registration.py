@@ -43,44 +43,13 @@ class RegistrationNDT():
         likelihood=tf.exp(-lfd2*l/2)
         loss=-lfd1*tf.reduce_sum(likelihood)
         G,H=gradients(m_ij,CInv, MCov, likelihood,lfd2,self.PARAMS[3:])
-        return self.loss+loss,self.gradient-G,self.hessian-H
-        #self.loss=self.loss+loss
-        #GRADIENT COMPUTATION
-        #self.gradient=self.gradient - G
-        #self.hessian=self.hessian - H
-
-    def add_pair(self,static, moving, n_neighbors=2):
-        NM=tf.greater_equal(tf.shape(moving.Means)[0], n_neighbors)
-        NS=tf.greater_equal(tf.shape(static.Means)[0], n_neighbors)
-        HasDistributions=tf.logical_and(NM,NS)
-        self.loss, self.gradient, self.hessian=tf.cond(HasDistributions, lambda: self.add_pair_lamd(static,moving, n_neighbors), lambda: (self.loss, self.gradient, self.hessian))
-
-    def add_pair_lamd_(self,static, moving, n_neighbors):
-        lfd1=1
-        lfd2=0.05
-        RotationTiled= tf.tile(tf.expand_dims(self.Rotation,0), (moving.NCELLS, 1,1))
-        TransformedMeans=tf.matmul(RotationTiled, tf.expand_dims(moving.Means,-1))
-        TransformedMeans=tf.squeeze(TransformedMeans, -1)+self.Translation
-        TransformedCovars=tf.matmul(tf.matmul(RotationTiled,moving.Covariances, transpose_a=True),RotationTiled)
-        Distances=tf.expand_dims(TransformedMeans,1)-tf.expand_dims(static.Means,0)
-        CSum=tf.expand_dims(TransformedCovars,1)+tf.expand_dims(static.Covariances,0)
-        MCov = tf.reshape(tf.tile(tf.expand_dims(moving.Covariances,1),(1,2,1,1)), [-1,3,3])
-        Distances,CSum= self.n_nearest(Distances, CSum, n_neighbors)
-        #Instead of inverse, cholesky decomposition
-        #CInv = tf.matrix_inverse(CSum)
-        CInv=tf.cholesky_solve(CSum, tf.tile(tf.expand_dims(tf.eye(3),0),(tf.shape(CSum)[0],1,1)))
-        m_ij=tf.expand_dims(Distances,2)
-        l=tf.matmul(tf.matmul(m_ij, CInv, transpose_a=True), m_ij)
-        likelihood=tf.exp(-lfd2*l/2)
-        loss=-lfd1*tf.reduce_sum(likelihood)
-        G,H=gradients(m_ij,CInv, MCov, likelihood,lfd2,self.PARAMS[3:])
         return loss,G,H
 
     def add_pair_(self,static, moving, n_neighbors=2):
         NM=tf.greater_equal(tf.shape(moving.Means)[0], n_neighbors)
         NS=tf.greater_equal(tf.shape(static.Means)[0], n_neighbors)
         HasDistributions=tf.logical_and(NM,NS)
-        L, G, H=tf.cond(HasDistributions, lambda: self.add_pair_lamd_(static,moving, n_neighbors), lambda: (self.loss, self.gradient, self.hessian))
+        L, G, H=tf.cond(HasDistributions, lambda: self.add_pair_lamd(static,moving, n_neighbors), lambda: (self.loss, self.gradient, self.hessian))
         return L,G,H
 
     def add_semantic(self, static, moving, n_neighbors=2, n_classes=15, res=2):
