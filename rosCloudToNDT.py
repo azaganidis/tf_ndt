@@ -50,8 +50,10 @@ class PclToNDT():
         a=a[:,:4]
         #a[:,3]=a[:,3]/255
         feed = {self.inCloud:a}
+        start=time.time()
         M,C=self.sess.run([self.ndt.Means, self.ndt.Covariances], feed)
         self.pD.publish(NDT_to_MSG(C,M))
+        print(time.time()-start)
         #self.PublishCloud(result)
     def main(self):
         rospy.spin()

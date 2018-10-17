@@ -8,9 +8,8 @@ class RegistrationNDT():
         #nearest=tf.Print(nearest, [tf.reduce_mean(values)])
         ind=tf.tile(tf.expand_dims(tf.range(tf.shape(dist)[0]),1), (1,n_neighbors))
         ind=tf.concat([tf.reshape(ind,(-1,1)), tf.reshape(nearest,(-1,1))],1)
-        with tf.device('/device:GPU:0'):
-            Distances= tf.gather_nd(Distances, ind)
-            return Distances, tf.gather_nd(CSum,ind)
+        Distances= tf.gather_nd(Distances, ind)
+        return Distances, tf.gather_nd(CSum,ind)
     def init_transform(self):
         self.PARAMS=tf.Variable([0,0,0,0,0,0],dtype=tf.float32, trainable=False)
         c=tf.cos(self.PARAMS[3:])
@@ -37,7 +36,8 @@ class RegistrationNDT():
         Distances,CSum= self.n_nearest(Distances, CSum, n_neighbors)
         #Instead of inverse, cholesky decomposition
         #CInv = tf.matrix_inverse(CSum)
-        CInv=tf.cholesky_solve(CSum, tf.tile(tf.expand_dims(tf.eye(3),0),(tf.shape(CSum)[0],1,1)))
+        with tf.device('/device:CPU:0'):
+            CInv=tf.cholesky_solve(CSum, tf.tile(tf.expand_dims(tf.eye(3),0),(tf.shape(CSum)[0],1,1)))
         m_ij=tf.expand_dims(Distances,2)
         l=tf.matmul(tf.matmul(m_ij, CInv, transpose_a=True), m_ij)
         likelihood=tf.exp(-lfd2*l/2)
@@ -56,12 +56,11 @@ class RegistrationNDT():
         a=tf.constant(0.0)
         def split_semantic(incloud, val):
             ValueEqual = tf.equal(incloud[:,3], val)
-            with tf.device('/device:GPU:0'):
-                NumPoints=tf.reduce_sum(tf.cast(ValueEqual, tf.float32))
-                with tf.control_dependencies([NumPoints]):
-                    incloud=tf.cond(tf.greater(NumPoints,0), lambda:incloud, lambda: tf.constant([[0.0,0.0,0.0,.0]]))
-                    ValueEqual=tf.cond(tf.greater(NumPoints,0), lambda:ValueEqual, lambda: tf.constant([True]))
-                    return tf.boolean_mask(incloud, ValueEqual) 
+            NumPoints=tf.reduce_sum(tf.cast(ValueEqual, tf.float32))
+            with tf.control_dependencies([NumPoints]):
+                incloud=tf.cond(tf.greater(NumPoints,0), lambda:incloud, lambda: tf.constant([[0.0,0.0,0.0,.0]]))
+                ValueEqual=tf.cond(tf.greater(NumPoints,0), lambda:ValueEqual, lambda: tf.constant([True]))
+                return tf.boolean_mask(incloud, ValueEqual) 
         def AddL(a,L,G,H):
             L_,G_,H_= self.add_pair_(NDT(split_semantic(static, a),res), NDT(split_semantic(moving,a),res),n_neighbors) 
             return tf.add(a,1),tf.add(L,L_), tf.add(G,G_), tf.add(H,H_)
@@ -86,7 +85,8 @@ class RegistrationNDT():
         #Gradient=self.G
         #Hessian=self.H
         Hessian=regularize_Hessian(Hessian,Gradient)
-        X=tf.cholesky_solve(tf.cholesky(Hessian), Gradient)
+        with tf.device('/device:CPU:0'):
+            X=tf.cholesky_solve(tf.cholesky(Hessian), Gradient)
         #X=tf.matmul(tf.matrix_inverse(Hessian), Gradient)
 
         Diff_update = -tf.squeeze(X)

@@ -44,6 +44,8 @@ class RosSemantics():
                 ndt2=NDT(filt_static, 1.0)
                 self.registration.add_pair(ndt1, ndt2)
             '''
+
+            #with tf.device('/device:CPU:0'):
             self.registration.add_semantic(self.static,self.inCloud)
             #ndt1=NDT(self.inCloud, 4.0)
             #ndt2=NDT(self.static, 4.0)
